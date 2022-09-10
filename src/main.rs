@@ -21,7 +21,7 @@ fn factor(s: &str) -> Vec<u8> {
 }
 
 /// Generate a list of list of all factors that can be found in a factor.
-fn subsets(factors: Vec<u8>, min_len: usize) -> Vec<Vec<u8>> {
+fn subsets(factors: &[u8], min_len: usize) -> Vec<Vec<u8>> {
     let mut subsets: Vec<Vec<u8>> = Vec::new();
 
     for len in RangeInclusive::new(min_len, factors.len()) {
@@ -59,7 +59,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let mut results = Vec::new();
-    for subfactors in subsets(factors, MIN_LEN) {
+    for subfactors in subsets(&factors, MIN_LEN) {
         let words = match map.get(&subfactors) {
             Some(words) => words,
             None => continue,
@@ -86,8 +86,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             a.len().partial_cmp(&b.len()).unwrap()
         }
     });
+
+    let color_codes = ["\u{001b}[32m", "\u{001b}[0m"];
     for word in results.drain(..) {
-        println!("{}", word);
+        let anagram = factors.iter().all(|l| word.contains(*l as char));
+        if anagram {
+            println!("{}{word}{}", color_codes[0], color_codes[1]);
+        } else {
+            println!("{word}");
+        }
     }
 
     Ok(())
