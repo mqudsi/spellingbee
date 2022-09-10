@@ -37,9 +37,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<_> = env::args().skip(1).collect();
     let (pivot, letters) = match args.len() {
         1 => (None, &args[0]),
-        2 => (Some(&args[1]), &args[0]),
+        2 if args[1].len() == 1 => (Some(args[1].chars().nth(0).unwrap()), &args[0]),
         _ => {
-            eprintln!("USAGE: spellingbee LETTERS");
+            eprintln!("USAGE: spellingbee LETTERS [PIVOT]");
             return Ok(());
         }
     };
