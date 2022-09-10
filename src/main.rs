@@ -1,4 +1,5 @@
 use permutator::copy::Combination;
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::env;
 use std::fs::File;
@@ -80,10 +81,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Sort by length then alphabetically (not the other way around)
     results.sort_unstable_by(|a, b| {
-        if a.len() == b.len() {
-            a.partial_cmp(&b).unwrap()
-        } else {
-            a.len().partial_cmp(&b.len()).unwrap()
+        match a.len().cmp(&b.len()) {
+            Ordering::Equal => a.cmp(b),
+            result @ _ => result,
         }
     });
 
