@@ -13,7 +13,7 @@ fn factor(s: &str) -> Vec<u8> {
         .chars()
         .map(|c| c.to_ascii_lowercase() as u8)
         .collect();
-    factors.sort();
+    factors.sort_unstable();
     factors.dedup();
 
     factors
