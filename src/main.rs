@@ -4,7 +4,6 @@ use std::collections::HashMap;
 use std::env;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::ops::RangeInclusive;
 
 const MIN_LEN: usize = 4;
 const DICT_FILE: &'static str = "/usr/share/dict/words";
@@ -25,7 +24,7 @@ fn factor(s: &str) -> Vec<u8> {
 fn subsets(factors: &[u8], min_len: usize) -> Vec<Vec<u8>> {
     let mut subsets: Vec<Vec<u8>> = Vec::new();
 
-    for len in RangeInclusive::new(min_len, factors.len()) {
+    for len in min_len..=factors.len() {
         for word in factors.combination(len) {
             subsets.push(word);
         }
@@ -53,7 +52,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for line in reader.lines() {
         let word = line?;
-        let factors = factor(word.as_str());
+        let factors = factor(&word);
 
         let words = map.entry(factors).or_insert(Vec::new());
         words.push(word);
