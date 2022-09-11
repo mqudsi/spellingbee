@@ -11,8 +11,7 @@ const DICT_FILE: &'static str = "/usr/share/dict/words";
 fn factor(s: &str) -> Vec<u8> {
     let mut factors: Vec<u8> = s
         .chars()
-        .map(|c| c.to_lowercase().next().unwrap())
-        .map(|c| c as u8)
+        .map(|c| c.to_ascii_lowercase() as u8)
         .collect();
     factors.sort();
     factors.dedup();
