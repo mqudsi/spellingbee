@@ -39,7 +39,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let (pivot, letters) = match args.len() {
         1 => (None, &args[0]),
-        2 if args[1].len() == 1 => (Some(args[1].chars().nth(0).unwrap()), &args[0]),
+        2 if args[1].len() == 1 => (Some(args[1].chars().nth(0).unwrap() as u8), &args[0]),
         _ => {
             eprintln!("USAGE: spellingbee LETTERS [PIVOT]");
             return Ok(());
@@ -62,17 +62,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut results = Vec::new();
     for subfactors in subsets(&factors, MIN_LEN) {
+        if let Some(pivot) = pivot {
+            if !subfactors.contains(&pivot) {
+                continue;
+            }
+        }
+
         let words = match map.get(&subfactors) {
             Some(words) => words,
             None => continue,
         };
 
         for word in words {
-            if let Some(pivot) = pivot {
-                if !word.contains(pivot) {
-                    continue;
-                }
-            }
             // Don't print the words as we find them so that we
             // can sort by length before printing.
             // println!("{}", word);
