@@ -34,6 +34,9 @@ fn subsets(factors: &[u8], min_len: usize) -> Vec<Vec<u8>> {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<_> = env::args().skip(1).collect();
+    for arg in &args {
+        assert!(arg.is_ascii(), "spellingbee only supports ascii input!");
+    }
     let (pivot, letters) = match args.len() {
         1 => (None, &args[0]),
         2 if args[1].len() == 1 => (Some(args[1].chars().nth(0).unwrap()), &args[0]),
