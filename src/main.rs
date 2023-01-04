@@ -3,7 +3,8 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::env;
 use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Read, Write};
+use std::path::Path;
 
 const MIN_LEN: usize = 4;
 const DICT_FILE: &'static str = "/usr/share/dict/words";
@@ -47,17 +48,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let factors = factor(letters);
-    let mut map = HashMap::new();
 
-    let file = File::open(DICT_FILE)?;
-    let reader = BufReader::new(file);
-
-    for line in reader.lines() {
-        let word = line?;
-        let factors = factor(&word);
-
-        let words = map.entry(factors).or_insert(Vec::new());
-        words.push(word);
+    let serialized_path = Path::new("./factors.bin");
+    let mut serialized;
+    let mut map_backing = HashMap::new();
+    let mut map = &map_backing as &dyn GenericStrSliceMap<_, _>;
+    let mut initialized = false;
+    if serialized_path.exists() {
+        serialized = Vec::new();
+        File::open(serialized_path)
+            .and_then(|mut file| file.read_to_end(&mut serialized))
+            .and_then(|_| unsafe {
+                let local_map = rkyv::archived_root::<HashMap<Vec<u8>, Vec<String>>>(&serialized[..]);
+                initialized = !local_map.is_empty();
+                map = local_map as &dyn GenericStrSliceMap<_, _>;
+                Ok(())
+            })
+        .or_else(|err| {
+            eprintln!("Error loading saved factors state: {}", err);
+            Ok::<(), ()>(())
+        })
+        .ok();
+    }
+    if !initialized {
+        map_backing = generate_dict_factors()?;
+        cache_factors(&map_backing, serialized_path)?;
+        map = &map_backing;
     }
 
     let mut results = Vec::new();
@@ -68,17 +84,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
 
-        let words = match map.get(&subfactors) {
-            Some(words) => words,
-            None => continue,
-        };
-
-        for word in words {
+        map.for_each_of(&subfactors, |results, word| {
             // Don't print the words as we find them so that we
             // can sort by length before printing.
             // println!("{}", word);
             results.push(word);
-        }
+        }, &mut results);
     }
 
     // Sort by length then alphabetically (not the other way around)
@@ -100,4 +111,63 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     Ok(())
+}
+
+fn generate_dict_factors() -> Result<HashMap<Vec<u8>, Vec<String>>, std::io::Error> {
+    let mut map = HashMap::new();
+    let file = File::open(DICT_FILE)?;
+    let reader = BufReader::new(file);
+
+    for line in reader.lines() {
+        let word = line?;
+        let factors = factor(&word);
+
+        let words = map.entry(factors).or_insert(Vec::new());
+        words.push(word);
+    }
+    Ok(map)
+}
+
+fn cache_factors(map: &HashMap<Vec<u8>, Vec<String>>, path: &Path) -> std::io::Result<()> {
+    if path.exists() {
+        std::fs::remove_file(path)?;
+    }
+    let mut file = File::create(path)?;
+    file.write_all(&rkyv::to_bytes::<_, 256>(map)
+        .map_err(|err| {
+            eprintln!("{err}");
+            std::io::Error::new(std::io::ErrorKind::Other, "Error serialized data!")
+        })?)
+}
+
+trait GenericStrSliceMap<'a, F: Fn(&mut P, &'a str), P>
+{
+    fn for_each_of(&'a self, key: &[u8], callback: F, p: &mut P);
+}
+
+impl<'a, F: Fn(&mut P, &'a str), P> GenericStrSliceMap<'a, F, P> for HashMap<Vec<u8>, Vec<String>>
+{
+    fn for_each_of(&'a self, key: &[u8], callback: F, p: &mut P) {
+        let Some(items) = self.get(key) else {
+            return;
+        };
+        for value in items {
+            callback(&mut *p, value)
+        }
+    }
+}
+
+use rkyv::collections::ArchivedHashMap;
+use rkyv::string::ArchivedString;
+use rkyv::vec::ArchivedVec;
+impl<'a, F: Fn(&mut P, &'a str), P> GenericStrSliceMap<'a, F, P> for ArchivedHashMap<ArchivedVec<u8>, ArchivedVec<ArchivedString>>
+{
+    fn for_each_of(&'a self, key: &[u8], callback: F, p: &mut P) {
+        let Some(items) = self.get(key) else {
+            return
+        };
+        for i in 0..items.len() {
+            callback(&mut *p, &items[i]);
+        }
+    }
 }
