@@ -110,6 +110,10 @@ fn generate_dict_factors() -> Result<HashMap<Vec<u8>, Vec<String>>, std::io::Err
 
     for line in reader.lines() {
         let word = line?;
+        if word.as_bytes().iter().any(|c| c.is_ascii_uppercase() || *c == b'\'') {
+            // Ignore proper nouns and words with apostrophes
+            continue;
+        }
         let factors = factor(&word);
 
         let words = map.entry(factors).or_insert(Vec::new());
