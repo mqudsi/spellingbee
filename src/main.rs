@@ -11,10 +11,7 @@ const DICT_FILE: &'static str = "/usr/share/dict/words";
 const SERIALIZED: &'static str = "./factors.bin";
 
 fn factor(s: &str) -> Vec<u8> {
-    let mut factors: Vec<u8> = s
-        .chars()
-        .map(|c| c.to_ascii_lowercase() as u8)
-        .collect();
+    let mut factors: Vec<u8> = s.chars().map(|c| c.to_ascii_lowercase() as u8).collect();
     factors.sort_unstable();
     factors.dedup();
 
@@ -59,7 +56,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let result = File::open(serialized_path)
             .and_then(|mut file| file.read_to_end(&mut serialized))
             .and_then(|_| unsafe {
-                let local_map = rkyv::archived_root::<HashMap<Vec<u8>, Vec<String>>>(&serialized[..]);
+                let local_map =
+                    rkyv::archived_root::<HashMap<Vec<u8>, Vec<String>>>(&serialized[..]);
                 map = local_map as &dyn GenericStrSliceMap<_, _>;
                 Ok(())
             });
@@ -91,11 +89,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Sort by length then alphabetically (not the other way around)
-    results.sort_unstable_by(|a, b| {
-        match a.len().cmp(&b.len()) {
-            Ordering::Equal => a.cmp(b),
-            result @ _ => result,
-        }
+    results.sort_unstable_by(|a, b| match a.len().cmp(&b.len()) {
+        Ordering::Equal => a.cmp(b),
+        result @ _ => result,
     });
 
     let color_codes = ["\u{001b}[32m", "\u{001b}[0m"];
@@ -131,23 +127,20 @@ fn cache_factors(map: &HashMap<Vec<u8>, Vec<String>>, path: &Path) -> std::io::R
         std::fs::remove_file(path)?;
     }
     let mut file = File::create(path)?;
-    file.write_all(&rkyv::to_bytes::<_, 256>(map)
-        .map_err(|err| {
-            eprintln!("{err}");
-            std::io::Error::new(std::io::ErrorKind::Other, "Error serialized data!")
-        })?)
+    file.write_all(&rkyv::to_bytes::<_, 256>(map).map_err(|err| {
+        eprintln!("{err}");
+        std::io::Error::new(std::io::ErrorKind::Other, "Error serialized data!")
+    })?)
 }
 
-trait GenericStrSliceMap<'a, F: Fn(&mut P, &'a str), P>
-{
+trait GenericStrSliceMap<'a, F: Fn(&mut P, &'a str), P> {
     fn is_empty(&self) -> bool;
     /// Invokes a callback on each of any results for a key lookup in the map, passing in the
     /// user-specified callback variable `p` and each value in the lookup match.
     fn for_each_with(&'a self, key: &[u8], p: &mut P, callback: F);
 }
 
-impl<'a, F: Fn(&mut P, &'a str), P> GenericStrSliceMap<'a, F, P> for HashMap<Vec<u8>, Vec<String>>
-{
+impl<'a, F: Fn(&mut P, &'a str), P> GenericStrSliceMap<'a, F, P> for HashMap<Vec<u8>, Vec<String>> {
     fn is_empty(&self) -> bool {
         self.is_empty()
     }
@@ -162,10 +155,11 @@ impl<'a, F: Fn(&mut P, &'a str), P> GenericStrSliceMap<'a, F, P> for HashMap<Vec
     }
 }
 
-use rkyv::collections::ArchivedHashMap;
-use rkyv::string::ArchivedString;
-use rkyv::vec::ArchivedVec;
-impl<'a, F: Fn(&mut P, &'a str), P> GenericStrSliceMap<'a, F, P> for ArchivedHashMap<ArchivedVec<u8>, ArchivedVec<ArchivedString>>
+impl<'a, F: Fn(&mut P, &'a str), P> GenericStrSliceMap<'a, F, P>
+    for rkyv::collections::ArchivedHashMap<
+        rkyv::vec::ArchivedVec<u8>,
+        rkyv::vec::ArchivedVec<rkyv::string::ArchivedString>,
+    >
 {
     fn is_empty(&self) -> bool {
         self.is_empty()
