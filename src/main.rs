@@ -8,6 +8,7 @@ use std::path::Path;
 
 const MIN_LEN: usize = 4;
 const DICT_FILE: &'static str = "/usr/share/dict/words";
+const SERIALIZED: &'static str = "./factors.bin";
 
 fn factor(s: &str) -> Vec<u8> {
     let mut factors: Vec<u8> = s
@@ -49,28 +50,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let factors = factor(letters);
 
-    let serialized_path = Path::new("./factors.bin");
     let mut serialized;
     let mut map_backing = HashMap::new();
     let mut map = &map_backing as &dyn GenericStrSliceMap<_, _>;
-    let mut initialized = false;
+    let serialized_path = Path::new(SERIALIZED);
     if serialized_path.exists() {
         serialized = Vec::new();
-        File::open(serialized_path)
+        let result = File::open(serialized_path)
             .and_then(|mut file| file.read_to_end(&mut serialized))
             .and_then(|_| unsafe {
                 let local_map = rkyv::archived_root::<HashMap<Vec<u8>, Vec<String>>>(&serialized[..]);
-                initialized = !local_map.is_empty();
                 map = local_map as &dyn GenericStrSliceMap<_, _>;
                 Ok(())
-            })
-        .or_else(|err| {
+            });
+
+        if let Err(err) = result {
             eprintln!("Error loading saved factors state: {}", err);
-            Ok::<(), ()>(())
-        })
-        .ok();
+        }
     }
-    if !initialized {
+    if map.is_empty() {
         map_backing = generate_dict_factors()?;
         cache_factors(&map_backing, serialized_path)?;
         map = &map_backing;
@@ -142,11 +140,16 @@ fn cache_factors(map: &HashMap<Vec<u8>, Vec<String>>, path: &Path) -> std::io::R
 
 trait GenericStrSliceMap<'a, F: Fn(&mut P, &'a str), P>
 {
+    fn is_empty(&self) -> bool;
     fn for_each_of(&'a self, key: &[u8], callback: F, p: &mut P);
 }
 
 impl<'a, F: Fn(&mut P, &'a str), P> GenericStrSliceMap<'a, F, P> for HashMap<Vec<u8>, Vec<String>>
 {
+    fn is_empty(&self) -> bool {
+        self.is_empty()
+    }
+
     fn for_each_of(&'a self, key: &[u8], callback: F, p: &mut P) {
         let Some(items) = self.get(key) else {
             return;
@@ -162,6 +165,10 @@ use rkyv::string::ArchivedString;
 use rkyv::vec::ArchivedVec;
 impl<'a, F: Fn(&mut P, &'a str), P> GenericStrSliceMap<'a, F, P> for ArchivedHashMap<ArchivedVec<u8>, ArchivedVec<ArchivedString>>
 {
+    fn is_empty(&self) -> bool {
+        self.is_empty()
+    }
+
     fn for_each_of(&'a self, key: &[u8], callback: F, p: &mut P) {
         let Some(items) = self.get(key) else {
             return
