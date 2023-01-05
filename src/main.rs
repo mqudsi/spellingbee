@@ -82,12 +82,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
 
-        map.for_each_of(&subfactors, |results, word| {
+        map.for_each_with(&subfactors, &mut results, |results, word| {
             // Don't print the words as we find them so that we
             // can sort by length before printing.
             // println!("{}", word);
             results.push(word);
-        }, &mut results);
+        });
     }
 
     // Sort by length then alphabetically (not the other way around)
@@ -141,7 +141,9 @@ fn cache_factors(map: &HashMap<Vec<u8>, Vec<String>>, path: &Path) -> std::io::R
 trait GenericStrSliceMap<'a, F: Fn(&mut P, &'a str), P>
 {
     fn is_empty(&self) -> bool;
-    fn for_each_of(&'a self, key: &[u8], callback: F, p: &mut P);
+    /// Invokes a callback on each of any results for a key lookup in the map, passing in the
+    /// user-specified callback variable `p` and each value in the lookup match.
+    fn for_each_with(&'a self, key: &[u8], p: &mut P, callback: F);
 }
 
 impl<'a, F: Fn(&mut P, &'a str), P> GenericStrSliceMap<'a, F, P> for HashMap<Vec<u8>, Vec<String>>
@@ -150,7 +152,7 @@ impl<'a, F: Fn(&mut P, &'a str), P> GenericStrSliceMap<'a, F, P> for HashMap<Vec
         self.is_empty()
     }
 
-    fn for_each_of(&'a self, key: &[u8], callback: F, p: &mut P) {
+    fn for_each_with(&'a self, key: &[u8], p: &mut P, callback: F) {
         let Some(items) = self.get(key) else {
             return;
         };
@@ -169,7 +171,7 @@ impl<'a, F: Fn(&mut P, &'a str), P> GenericStrSliceMap<'a, F, P> for ArchivedHas
         self.is_empty()
     }
 
-    fn for_each_of(&'a self, key: &[u8], callback: F, p: &mut P) {
+    fn for_each_with(&'a self, key: &[u8], p: &mut P, callback: F) {
         let Some(items) = self.get(key) else {
             return
         };
