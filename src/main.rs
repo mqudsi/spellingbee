@@ -92,7 +92,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let ansi_green = ["\u{001b}[32m", "\u{001b}[0m"];
     for word in results.drain(..) {
-        let anagram = factors.iter().all(|l| word.contains(*l as char));
+        let anagram = factors.iter().all(|l| word.as_bytes().contains(l));
         if anagram {
             println!("{}{word}{}", ansi_green[0], ansi_green[1]);
         } else {
