@@ -1,5 +1,4 @@
 use permutator::copy::Combination;
-use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::env;
 use std::fs::File;
@@ -89,10 +88,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Sort by length then alphabetically (not the other way around)
-    results.sort_unstable_by(|a, b| match a.len().cmp(&b.len()) {
-        Ordering::Equal => a.cmp(b),
-        result @ _ => result,
-    });
+    results.sort_unstable_by_key(|word| (word.len(), *word));
 
     let color_codes = ["\u{001b}[32m", "\u{001b}[0m"];
     for word in results.drain(..) {
