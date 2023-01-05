@@ -90,11 +90,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Sort by length then alphabetically (not the other way around)
     results.sort_unstable_by_key(|word| (word.len(), *word));
 
-    let color_codes = ["\u{001b}[32m", "\u{001b}[0m"];
+    let ansi_green = ["\u{001b}[32m", "\u{001b}[0m"];
     for word in results.drain(..) {
         let anagram = factors.iter().all(|l| word.contains(*l as char));
         if anagram {
-            println!("{}{word}{}", color_codes[0], color_codes[1]);
+            println!("{}{word}{}", ansi_green[0], ansi_green[1]);
         } else {
             println!("{word}");
         }
